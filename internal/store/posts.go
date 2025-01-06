@@ -2,23 +2,30 @@ package store
 
 import (
 	"context"
+	"database/sql"
+	"errors"
+	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 type Post struct {
-	ID        int64    `json:"id"`
-	Content   string   `json:"content"`
-	Title     string   `json:"title"`
-	UserID    int64    `json:"user_id"`
-	Tags      []string `json:"tags"`
-	CreatedAt string   `json:"created_at"`
-	UpdatedAt string   `json:"updated_at"`
+	ID        int64     `json:"id"`
+	Content   string    `json:"content"`
+	Title     string    `json:"title"`
+	UserID    int64     `json:"user_id"`
+	Tags      []string  `json:"tags"`
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
 }
 
 type PostStore struct {
 	db *pgxpool.Pool
 }
+
+var (
+	ErrNotFound = errors.New("record not found")
+)
 
 func (s *PostStore) Create(ctx context.Context, post *Post) error {
 	query := `
@@ -40,4 +47,38 @@ func (s *PostStore) Create(ctx context.Context, post *Post) error {
 	}
 
 	return nil
+}
+
+func (s *PostStore) GetByID(ctx context.Context, id int64) (*Post, error) {
+	query := `
+		SELECT id, user_id, title, content, tags, created_at, updated_at
+		FROM posts
+		WHERE id = $1
+	`
+
+	var post Post
+	err := s.db.QueryRow(
+		ctx,
+		query,
+		id,
+	).Scan(
+		&post.ID,
+		&post.UserID,
+		&post.Title,
+		&post.Content,
+		&post.Tags,
+		&post.CreatedAt,
+		&post.UpdatedAt,
+	)
+
+	if err != nil {
+		switch {
+		case errors.Is(err, sql.ErrNoRows):
+			return nil, ErrNotFound
+		default:
+			return nil, nil
+		}
+	}
+
+	return &post, nil
 }

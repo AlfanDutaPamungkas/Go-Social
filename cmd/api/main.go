@@ -8,6 +8,8 @@ import (
 	"github.com/AlfanDutaPamungkas/Go-Social/internal/store"
 )
 
+const version = "0.0.1"
+
 func main() {
 	env.LoadEnv()
 
@@ -18,6 +20,7 @@ func main() {
 			maxOpenConns: env.GetIntEnv("DB_MAX_OPEN_CONNS", 30),
 			maxIdleTime:  env.GetEnv("DB_MAX_IDLE_TIME", "15m"),
 		},
+		env: env.GetEnv("env", "DEVELOPMENT"),
 	}
 
 	db, err := db.New(

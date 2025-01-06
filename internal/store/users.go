@@ -2,17 +2,17 @@ package store
 
 import (
 	"context"
+	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 type User struct {
-	ID        int64  `json:"id"`
-	Username  string `json:"username"`
-	Email     string `json:"email"`
-	Password  string `json:"-"`
-	CreatedAt string `json:"created_at"`
-	UpdatedAt string `json:"updated_at"`
+	ID        int64     `json:"id"`
+	Username  string    `json:"username"`
+	Email     string    `json:"email"`
+	Password  string    `json:"-"`
+	CreatedAt time.Time `json:"created_at"`
 }
 
 type UsersStore struct {
@@ -31,7 +31,7 @@ func (s *UsersStore) Create(ctx context.Context, user *User) error {
 		user.Username,
 		user.Password,
 		user.Email,
-	).Scan(&user.ID, &user.CreatedAt, &user.UpdatedAt)
+	).Scan(&user.ID, &user.CreatedAt)
 
 	if err != nil {
 		return err
