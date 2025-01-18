@@ -17,6 +17,7 @@ type Post struct {
 	Tags      []string  `json:"tags"`
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
+	Comments  []Comment `json:"comments"`
 }
 
 type PostStore struct {
@@ -81,4 +82,34 @@ func (s *PostStore) GetByID(ctx context.Context, id int64) (*Post, error) {
 	}
 
 	return &post, nil
+}
+
+func (s *PostStore) Delete(ctx context.Context, id int64) error {
+	query := `DELETE FROM posts WHERE id = $1`
+	result, err := s.db.Exec(ctx, query, id)
+	if err != nil {
+		return err
+	}
+
+	rows := result.RowsAffected()
+	if rows == 0 {
+		return ErrNotFound
+	}
+
+	return nil
+}
+
+func (s *PostStore) Update(ctx context.Context, post *Post) error {
+	query := `
+		UPDATE posts
+		SET title = $1, content = $2, tags = $3, updated_at = $4
+		WHERE id = $5
+	`
+
+	_, err := s.db.Exec(ctx, query, post.Title, post.Content, post.Tags, post.UpdatedAt, post.ID)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
