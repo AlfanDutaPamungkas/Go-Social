@@ -2,8 +2,15 @@ package store
 
 import (
 	"context"
+	"errors"
+	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
+)
+
+var (
+	ErrNotFound          = errors.New("record not found")
+	QueryTimeoutDuration = time.Second * 5
 )
 
 type Storage struct {
@@ -23,10 +30,10 @@ type Storage struct {
 	}
 }
 
-func NewStorage(db *pgxpool.Pool) Storage{
+func NewStorage(db *pgxpool.Pool) Storage {
 	return Storage{
-		Posts: &PostStore{db},
-		Users: &UsersStore{db},
+		Posts:    &PostStore{db},
+		Users:    &UsersStore{db},
 		Comments: &CommentStore{db},
 	}
 }
