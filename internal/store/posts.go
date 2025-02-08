@@ -4,6 +4,8 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"fmt"
+	"strings"
 	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -146,36 +148,76 @@ func (s *PostStore) Update(ctx context.Context, post *Post) error {
 	return nil
 }
 
-func (s *PostStore) GetUserFeed(ctx context.Context, userID int64) ([]PostWithMetadata, error) {
+func (s *PostStore) GetUserFeed(ctx context.Context, userID int64, p *PaginatedFeedQuery) ([]PostWithMetadata, error) {
+	var conditions []string
+	var args []interface{}
+	argIndex := 1 // Mulai dari $1 untuk parameter pertama
+
+	// Query dasar
 	query := `
-		SELECT 
-			p.id, p.user_id, p.title, p.content, p.created_at, p.version, p.tags,
-			u.username,
-			count(c.id) AS comments_count
-		FROM posts p
-		LEFT JOIN comments c ON c.post_id = p.id
-		LEFT JOIN users u ON p.user_id = u.id
-		LEFT JOIN followers f ON f.follower_id = p.user_id OR p.user_id = $1
-		WHERE f.user_id = $1 OR p.user_id = $1
-		GROUP BY p.id, u.username
-		ORDER BY p.created_at DESC
+	SELECT 
+		p.id, p.user_id, p.title, p.content, p.created_at, p.version, p.tags,
+		u.username,
+		count(c.id) AS comments_count
+	FROM posts p
+	LEFT JOIN comments c ON c.post_id = p.id
+	LEFT JOIN users u ON p.user_id = u.id
+	LEFT JOIN followers f ON f.follower_id = p.user_id
+	WHERE (f.user_id = $1 OR p.user_id = $1)
 	`
 
+	args = append(args, userID)
+
+	// Filter Search
+	if p.Search != "" {
+		conditions = append(conditions, fmt.Sprintf(
+			"to_tsvector('english', p.title || ' ' || p.content) @@ plainto_tsquery('english', $%d::text)",
+			argIndex+1))
+		args = append(args, p.Search)
+		argIndex++
+	}	
+
+	// Filter Tags
+	if len(p.Tags) > 0 {
+		conditions = append(conditions, fmt.Sprintf("p.tags @> $%d", argIndex+1))
+		args = append(args, p.Tags)
+		argIndex++
+	}
+
+	// Filter Since
+	if !p.Since.IsZero() {
+		conditions = append(conditions, fmt.Sprintf("p.created_at >= $%d", argIndex+1))
+		args = append(args, p.Since)
+		argIndex++
+	}
+
+	// Filter Until
+	if !p.Until.IsZero() {
+		conditions = append(conditions, fmt.Sprintf("p.created_at <= $%d", argIndex+1))
+		args = append(args, p.Until)
+		argIndex++
+	}
+
+	// Tambahkan kondisi ke query jika ada filter
+	if len(conditions) > 0 {
+		query += " AND " + strings.Join(conditions, " AND ")
+	}
+
+	// Tambahkan ORDER, LIMIT, dan OFFSET
+	query += fmt.Sprintf(" GROUP BY p.id, u.username ORDER BY p.created_at %s LIMIT $%d OFFSET $%d", p.Sort, argIndex+1, argIndex+2)
+	args = append(args, p.Limit, p.Offset)
+
+	// Eksekusi Query
 	ctx, cancel := context.WithTimeout(ctx, QueryTimeoutDuration)
 	defer cancel()
 
-	rows, err := s.db.Query(
-		ctx,
-		query,
-		userID,
-	)
-
+	rows, err := s.db.Query(ctx, query, args...)
 	if err != nil {
 		return nil, err
 	}
-
 	defer rows.Close()
 
+	// Scan hasil ke dalam struct
 	var feeds []PostWithMetadata
 	for rows.Next() {
 		var feed PostWithMetadata
@@ -189,12 +231,14 @@ func (s *PostStore) GetUserFeed(ctx context.Context, userID int64) ([]PostWithMe
 			&feed.Tags,
 			&feed.User.Username,
 			&feed.CommentCount,
-		); err != nil{
-			return nil, err	
+		); err != nil {
+			return nil, err
 		}
-
 		feeds = append(feeds, feed)
 	}
+
+	fmt.Println("FINAL QUERY:", query)
+	fmt.Println("ARGS:", args)	
 
 	return feeds, nil
 }
