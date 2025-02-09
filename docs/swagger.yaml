@@ -1,0 +1,373 @@
+basePath: /v1
+definitions:
+  main.CreatePostPayload:
+    properties:
+      content:
+        maxLength: 1000
+        type: string
+      tags:
+        items:
+          type: string
+        type: array
+      title:
+        maxLength: 100
+        type: string
+    required:
+    - content
+    - title
+    type: object
+  main.UpdatePostPayload:
+    properties:
+      content:
+        maxLength: 1000
+        type: string
+      tags:
+        items:
+          type: string
+        type: array
+      title:
+        maxLength: 100
+        type: string
+    type: object
+  store.Comment:
+    properties:
+      content:
+        type: string
+      created_at:
+        type: string
+      id:
+        type: integer
+      post_id:
+        type: integer
+      user:
+        $ref: '#/definitions/store.User'
+      user_id:
+        type: integer
+    type: object
+  store.Post:
+    properties:
+      comments:
+        items:
+          $ref: '#/definitions/store.Comment'
+        type: array
+      content:
+        type: string
+      created_at:
+        type: string
+      id:
+        type: integer
+      tags:
+        items:
+          type: string
+        type: array
+      title:
+        type: string
+      updated_at:
+        type: string
+      user:
+        $ref: '#/definitions/store.User'
+      user_id:
+        type: integer
+      version:
+        type: integer
+    type: object
+  store.User:
+    properties:
+      created_at:
+        type: string
+      email:
+        type: string
+      id:
+        type: integer
+      username:
+        type: string
+    type: object
+info:
+  contact:
+    email: support@swagger.io
+    name: API Support
+    url: http://www.swagger.io/support
+  license:
+    name: Apache 2.0
+    url: http://www.apache.org/licenses/LICENSE-2.0.html
+  termsOfService: http://swagger.io/terms/
+  title: GopherSocial API
+paths:
+  /posts:
+    post:
+      consumes:
+      - application/json
+      description: Creates a new post with title, content, and tags
+      parameters:
+      - description: Post data
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/main.CreatePostPayload'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/store.Post'
+        "400":
+          description: Invalid request payload
+          schema: {}
+        "500":
+          description: Internal Server Error
+          schema: {}
+      security:
+      - ApiKeyAuth: []
+      summary: Create a new post
+      tags:
+      - posts
+  /posts/{postID}:
+    delete:
+      consumes:
+      - application/json
+      description: Deletes a post by ID
+      parameters:
+      - description: Post ID
+        in: path
+        name: postID
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: No Content
+        "404":
+          description: Post not found
+          schema: {}
+        "500":
+          description: Internal Server Error
+          schema: {}
+      security:
+      - ApiKeyAuth: []
+      summary: Delete a post
+      tags:
+      - posts
+    get:
+      consumes:
+      - application/json
+      description: Retrieves a post along with its comments
+      parameters:
+      - description: Post ID
+        in: path
+        name: postID
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/store.Post'
+        "404":
+          description: Post not found
+          schema: {}
+        "500":
+          description: Internal Server Error
+          schema: {}
+      security:
+      - ApiKeyAuth: []
+      summary: Get a post by ID
+      tags:
+      - posts
+    patch:
+      consumes:
+      - application/json
+      description: Updates a post's title, content, or tags
+      parameters:
+      - description: Post ID
+        in: path
+        name: postID
+        required: true
+        type: integer
+      - description: Updated post data
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/main.UpdatePostPayload'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/store.Post'
+        "400":
+          description: Invalid request payload
+          schema: {}
+        "404":
+          description: Post not found
+          schema: {}
+        "500":
+          description: Internal Server Error
+          schema: {}
+      security:
+      - ApiKeyAuth: []
+      summary: Update a post
+      tags:
+      - posts
+  /users/{userID}/:
+    get:
+      consumes:
+      - application/json
+      description: Fetches a user profile by ID
+      parameters:
+      - description: User ID
+        in: path
+        name: userID
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/store.User'
+        "400":
+          description: Bad Request
+          schema: {}
+        "404":
+          description: Not Found
+          schema: {}
+        "500":
+          description: Internal Server Error
+          schema: {}
+      security:
+      - ApiKeyAuth: []
+      summary: Fetches a user profile
+      tags:
+      - users
+  /users/{userID}/follow:
+    delete:
+      consumes:
+      - application/json
+      description: Unfollows a user profile by ID
+      parameters:
+      - description: User ID
+        in: path
+        name: userID
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: No Content
+        "400":
+          description: User payload missing
+          schema: {}
+        "404":
+          description: User not found
+          schema: {}
+        "500":
+          description: Internal Server Error
+          schema: {}
+      security:
+      - ApiKeyAuth: []
+      summary: Unfollows a user
+      tags:
+      - users
+    put:
+      consumes:
+      - application/json
+      description: Follows a user profile by ID
+      parameters:
+      - description: User ID
+        in: path
+        name: userID
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: No Content
+        "400":
+          description: User payload missing
+          schema: {}
+        "404":
+          description: User not found
+          schema: {}
+        "500":
+          description: Internal Server Error
+          schema: {}
+      security:
+      - ApiKeyAuth: []
+      summary: Follows a user
+      tags:
+      - users
+  /users/feed:
+    get:
+      consumes:
+      - application/json
+      description: Retrieves a paginated feed of posts for the user, with filtering
+        options
+      parameters:
+      - default: 20
+        description: Number of posts to retrieve (1-20)
+        in: query
+        name: limit
+        type: integer
+      - default: 0
+        description: Pagination offset (>=0)
+        in: query
+        name: offset
+        type: integer
+      - default: desc
+        description: Sort order (asc or desc)
+        enum:
+        - asc
+        - desc
+        in: query
+        name: sort
+        type: string
+      - collectionFormat: csv
+        description: Filter by up to 5 tags
+        in: query
+        items:
+          type: string
+        name: tags
+        type: array
+      - description: Search query (max 100 chars)
+        in: query
+        name: search
+        type: string
+      - description: Start date (RFC3339 format)
+        in: query
+        name: since
+        type: string
+      - description: End date (RFC3339 format)
+        in: query
+        name: until
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/store.Post'
+            type: array
+        "400":
+          description: Invalid request parameters
+          schema: {}
+        "500":
+          description: Internal Server Error
+          schema: {}
+      security:
+      - ApiKeyAuth: []
+      summary: Get user feed
+      tags:
+      - users
+swagger: "2.0"
