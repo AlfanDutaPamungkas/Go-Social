@@ -1,11 +1,10 @@
 package main
 
 import (
-	"log"
-
 	"github.com/AlfanDutaPamungkas/Go-Social/internal/db"
 	"github.com/AlfanDutaPamungkas/Go-Social/internal/env"
 	"github.com/AlfanDutaPamungkas/Go-Social/internal/store"
+	"go.uber.org/zap"
 )
 
 const version = "0.0.1"
@@ -41,6 +40,10 @@ func main() {
 		env: env.GetEnv("env", "DEVELOPMENT"),
 	}
 
+	// logger
+	logger := zap.Must(zap.NewProduction()).Sugar()
+	defer logger.Sync()
+
 	db, err := db.New(
 		cfg.db.addr,
 		cfg.db.maxOpenConns,
@@ -48,20 +51,21 @@ func main() {
 	)
 
 	if err != nil {
-		log.Panic(err)
+		logger.Fatal(err)
 	}
 
 	defer db.Close()
-	log.Print("db connection pool established")
+	logger.Info("db connection pool established")
 
 	store := store.NewStorage(db)
 
 	app := &application{
 		config: cfg,
 		store:  store,
+		logger: logger,
 	}
 
 	mux := app.mount()
 
-	log.Fatal(app.run(mux))
+	logger.Fatal(app.run(mux))
 }
