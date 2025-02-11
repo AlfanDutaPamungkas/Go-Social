@@ -7,14 +7,32 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
+	"golang.org/x/crypto/bcrypt"
 )
 
 type User struct {
 	ID        int64     `json:"id"`
 	Username  string    `json:"username"`
 	Email     string    `json:"email"`
-	Password  string    `json:"-"`
+	Password  password  `json:"-"`
 	CreatedAt time.Time `json:"created_at"`
+}
+
+type password struct {
+	text *string
+	hash []byte
+}
+
+func (p *password) Set(text string) error {
+	hash, err := bcrypt.GenerateFromPassword([]byte(text), bcrypt.DefaultCost)
+	if err != nil {
+		return err
+	}
+
+	p.text = &text
+	p.hash = hash
+
+	return nil
 }
 
 type UsersStore struct {
@@ -34,7 +52,7 @@ func (s *UsersStore) Create(ctx context.Context, user *User) error {
 		ctx,
 		query,
 		user.Username,
-		user.Password,
+		user.Password.hash,
 		user.Email,
 	).Scan(&user.ID, &user.CreatedAt)
 
@@ -77,4 +95,11 @@ func (s *UsersStore) GetByID(ctx context.Context, id int64) (*User, error) {
 	}
 
 	return &user, err
+}
+
+func (s *UsersStore) CreateAndInvite(ctx context.Context, user *User, token string) error {
+	// transaction wrapper
+		// create the user 
+		// create the user invite
+	return nil 
 }
