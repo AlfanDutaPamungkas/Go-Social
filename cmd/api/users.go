@@ -114,6 +114,37 @@ func (app *application) unfollowUserHandler(w http.ResponseWriter, r *http.Reque
 	w.WriteHeader(http.StatusNoContent)
 }
 
+// ActivateUser godoc
+//
+//	@Summary		Activates/Register a user
+//	@Description	Activates/Register a user by invitation token
+//	@Tags			users
+//	@Accept			json
+//	@Produce		json
+//	@param			token	path	string	true	"invitation token"
+//	@Success		204
+//	@Failure		400	{object}	error	"User payload missing"
+//	@Failure		404	{object}	error
+//	@Failure		500	{object}	error
+//	@Security		ApiKeyAuth
+//	@Router			/users/activate/{token} [put]
+func (app *application) activateUserHandler(w http.ResponseWriter, r *http.Request) {
+	token := chi.URLParam(r, "token")
+	app.logger.Info(token)
+	err := app.store.Users.Activate(r.Context(), token)
+	if err != nil {
+		switch err {
+		case store.ErrNotFound:
+			app.notFoundResponse(w, r, err)
+		default:
+			app.internalServerError(w, r, err)
+		}
+		return
+	}
+
+	w.WriteHeader(http.StatusNoContent)
+}
+
 func (app *application) userContextMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()

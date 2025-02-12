@@ -237,8 +237,5 @@ func (s *PostStore) GetUserFeed(ctx context.Context, userID int64, p *PaginatedF
 		feeds = append(feeds, feed)
 	}
 
-	fmt.Println("FINAL QUERY:", query)
-	fmt.Println("ARGS:", args)	
-
 	return feeds, nil
 }
