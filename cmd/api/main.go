@@ -5,6 +5,7 @@ import (
 
 	"github.com/AlfanDutaPamungkas/Go-Social/internal/db"
 	"github.com/AlfanDutaPamungkas/Go-Social/internal/env"
+	"github.com/AlfanDutaPamungkas/Go-Social/internal/mailer"
 	"github.com/AlfanDutaPamungkas/Go-Social/internal/store"
 	"go.uber.org/zap"
 )
@@ -42,7 +43,14 @@ func main() {
 		env: env.GetEnv("env", "DEVELOPMENT"),
 		mail: mailConfig{
 			exp: time.Hour * 24 * 3,
+			smtp: smtpConfig{
+				host:     env.GetEnv("SMTP_HOST", "smtp.example.com"),
+				port:     env.GetEnv("SMTP_PORT", "587"),
+				username: env.GetEnv("SMTP_USERNAME", ""),
+				password: env.GetEnv("SMTP_PASSWORD", ""),
+			},
 		},
+		frontendURL: env.GetEnv("FRONTEND_URL", "http://localhost:4000"),
 	}
 
 	// logger
@@ -64,10 +72,18 @@ func main() {
 
 	store := store.NewStorage(db)
 
+	mailer := mailer.NewSMTPMailer(
+		cfg.mail.smtp.host,
+		cfg.mail.smtp.port,
+		cfg.mail.smtp.username,
+		cfg.mail.smtp.password,
+	)
+
 	app := &application{
 		config: cfg,
 		store:  store,
 		logger: logger,
+		mailer: mailer,
 	}
 
 	mux := app.mount()
