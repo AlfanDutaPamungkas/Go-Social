@@ -3,7 +3,6 @@ package mailer
 import (
 	"bytes"
 	"fmt"
-	"log"
 	"net/smtp"
 	"text/template"
 	"time"
@@ -35,7 +34,7 @@ func NewSMTPMailer(host, port, username, password string) *SMTPMailer {
 	}
 }
 
-func (m *SMTPMailer) Send(templateFile, username, email string, data any, isSandbox bool) error {
+func (m *SMTPMailer) Send(templateFile, username, email string, data any) error {
 	tmpl, err := template.ParseFS(FS, "templates/"+templateFile)
 	if err != nil {
 		return err
@@ -56,17 +55,15 @@ func (m *SMTPMailer) Send(templateFile, username, email string, data any, isSand
 
 	auth := smtp.PlainAuth("", m.username, m.password, m.smtpHost)
 
+	var retryErr error
 	for i := 0; i < maxRetries; i++ {
-		err = smtp.SendMail(m.smtpHost+":"+m.smtpPort, auth, m.username, []string{email}, []byte(message))
-		if err != nil {
-			log.Printf("Failed to send email to %v, attempt %d/%d: %v", email, i+1, maxRetries, err)
+		retryErr = smtp.SendMail(m.smtpHost+":"+m.smtpPort, auth, m.username, []string{email}, []byte(message))
+		if retryErr != nil {
 			time.Sleep(time.Second * time.Duration(i+1))
 			continue
 		}
-
-		log.Printf("Email sent successfully to %v", email)
 		return nil
 	}
 
-	return fmt.Errorf("failed to send email after %d attempts", maxRetries)
+	return fmt.Errorf("failed to send email after %d attempts, error: %v", maxRetries, retryErr)
 }

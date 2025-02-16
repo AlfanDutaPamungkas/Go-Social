@@ -50,7 +50,7 @@ func main() {
 				password: env.GetEnv("SMTP_PASSWORD", ""),
 			},
 		},
-		frontendURL: env.GetEnv("FRONTEND_URL", "http://localhost:4000"),
+		frontendURL: env.GetEnv("FRONTEND_URL", "http://localhost:5173"),
 	}
 
 	// logger
