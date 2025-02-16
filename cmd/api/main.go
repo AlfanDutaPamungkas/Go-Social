@@ -3,6 +3,7 @@ package main
 import (
 	"time"
 
+	"github.com/AlfanDutaPamungkas/Go-Social/internal/auth"
 	"github.com/AlfanDutaPamungkas/Go-Social/internal/db"
 	"github.com/AlfanDutaPamungkas/Go-Social/internal/env"
 	"github.com/AlfanDutaPamungkas/Go-Social/internal/mailer"
@@ -51,6 +52,17 @@ func main() {
 			},
 		},
 		frontendURL: env.GetEnv("FRONTEND_URL", "http://localhost:5173"),
+		auth: authConfig{
+			basic: basicConfig{
+				user: env.GetEnv("AUTH_USERNAME", ""),
+				pass: env.GetEnv("AUTH_PASS", ""),
+			},
+			token: tokenConfig{
+				secret: env.GetEnv("AUTH_TOKEN_SECRET", ""),
+				exp: time.Hour * 24 * 3,
+				iss: "gophersocial",
+			},
+		},
 	}
 
 	// logger
@@ -79,11 +91,18 @@ func main() {
 		cfg.mail.smtp.password,
 	)
 
+	jwtAuthenticator := auth.NewJWTAuthenticator(
+		cfg.auth.token.secret,
+		cfg.auth.token.iss,
+		cfg.auth.token.iss,
+	)
+
 	app := &application{
 		config: cfg,
 		store:  store,
 		logger: logger,
 		mailer: mailer,
+		authenticator: jwtAuthenticator,
 	}
 
 	mux := app.mount()

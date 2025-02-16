@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/AlfanDutaPamungkas/Go-Social/docs"
+	"github.com/AlfanDutaPamungkas/Go-Social/internal/auth"
 	"github.com/AlfanDutaPamungkas/Go-Social/internal/mailer"
 	"github.com/AlfanDutaPamungkas/Go-Social/internal/store"
 	"github.com/go-chi/chi/v5"
@@ -16,10 +17,11 @@ import (
 )
 
 type application struct {
-	config config
-	store  store.Storage
-	logger *zap.SugaredLogger
-	mailer *mailer.SMTPMailer
+	config        config
+	store         store.Storage
+	logger        *zap.SugaredLogger
+	mailer        *mailer.SMTPMailer
+	authenticator auth.Authenticator
 }
 
 type config struct {
@@ -29,11 +31,28 @@ type config struct {
 	apiURL      string
 	mail        mailConfig
 	frontendURL string
+	auth        authConfig
+}
+
+type authConfig struct {
+	basic basicConfig
+	token tokenConfig
+}
+
+type basicConfig struct {
+	user string
+	pass string
+}
+
+type tokenConfig struct {
+	secret string
+	exp    time.Duration
+	iss    string
 }
 
 type mailConfig struct {
-	exp       time.Duration
-	smtp      smtpConfig
+	exp  time.Duration
+	smtp smtpConfig
 }
 
 type smtpConfig struct {
@@ -58,8 +77,8 @@ func (app *application) mount() http.Handler {
 		AllowedHeaders:   []string{"Accept", "Authorization", "Content-Type", "X-CSRF-Token"},
 		ExposedHeaders:   []string{"Link"},
 		AllowCredentials: false,
-		MaxAge:           300, // Maximum value not ignored by any of major browsers
-	  }))
+		MaxAge:           300,
+	}))
 
 	r.Use(middleware.RequestID)
 	r.Use(middleware.RealIP)
@@ -69,7 +88,7 @@ func (app *application) mount() http.Handler {
 	r.Use(middleware.Timeout(60 * time.Second))
 
 	r.Route("/v1", func(r chi.Router) {
-		r.Get("/health", app.healthCheckHandler)
+		r.With(app.BasicAuthMiddleware()).Get("/health", app.healthCheckHandler)
 
 		docsURL := fmt.Sprintf("%s/swagger/doc.json", app.config.addr)
 		r.Get("/swagger/*", httpSwagger.Handler(httpSwagger.URL(docsURL)))
@@ -106,6 +125,7 @@ func (app *application) mount() http.Handler {
 
 		r.Route("/authentication", func(r chi.Router) {
 			r.Post("/user", app.registerUserHandler)
+			r.Post("/token", app.createTokenHandler)
 		})
 	})
 

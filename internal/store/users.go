@@ -3,7 +3,6 @@ package store
 import (
 	"context"
 	"crypto/sha256"
-	"database/sql"
 	"encoding/hex"
 	"errors"
 	"time"
@@ -42,6 +41,11 @@ func (p *password) Set(text string) error {
 	p.hash = hash
 
 	return nil
+}
+
+func (p *password) Verify(pass string) bool {
+	err := bcrypt.CompareHashAndPassword(p.hash, []byte(pass))
+	return err == nil
 }
 
 type UsersStore struct {
@@ -83,7 +87,7 @@ func (s *UsersStore) GetByID(ctx context.Context, id int64) (*User, error) {
 	query := `
 		SELECT id, username, email, created_at
 		FROM users
-		WHERE id = $1	
+		WHERE id = $1 AND is_active = true
 	`
 
 	ctx, cancel := context.WithTimeout(ctx, QueryTimeoutDuration)
@@ -103,10 +107,10 @@ func (s *UsersStore) GetByID(ctx context.Context, id int64) (*User, error) {
 
 	if err != nil {
 		switch {
-		case errors.Is(err, sql.ErrNoRows):
+		case errors.Is(err, pgx.ErrNoRows):
 			return nil, ErrNotFound
 		default:
-			return nil, nil
+			return nil, err
 		}
 	}
 
@@ -148,18 +152,53 @@ func (s *UsersStore) Activate(ctx context.Context, token string) error {
 	})
 }
 
-func (s *UsersStore) Delete(ctx context.Context, userID int64) error{
+func (s *UsersStore) Delete(ctx context.Context, userID int64) error {
 	return withTx(s.db, ctx, func(tx pgx.Tx) error {
-		if err := s.delete(ctx, tx, userID); err != nil{
+		if err := s.delete(ctx, tx, userID); err != nil {
 			return err
 		}
 
-		if err := s.deleteUserInvitations(ctx, tx, userID); err != nil{
+		if err := s.deleteUserInvitations(ctx, tx, userID); err != nil {
 			return err
 		}
 
 		return nil
 	})
+}
+
+func (s *UsersStore) GetByEmail(ctx context.Context, email string) (*User, error) {
+	query := `
+		SELECT id, username, email, password, created_at
+		FROM users
+		WHERE email = $1 AND is_active = true
+	`
+
+	ctx, cancel := context.WithTimeout(ctx, QueryTimeoutDuration)
+	defer cancel()
+
+	var user User
+	err := s.db.QueryRow(
+		ctx,
+		query,
+		email,
+	).Scan(
+		&user.ID,
+		&user.Username,
+		&user.Email,
+		&user.Password.hash,
+		&user.CreatedAt,
+	)
+
+	if err != nil {
+		switch {
+		case errors.Is(err, pgx.ErrNoRows):
+			return nil, ErrNotFound
+		default:
+			return nil, err
+		}
+	}
+
+	return &user, err
 }
 
 func (s *UsersStore) createUserInvitation(ctx context.Context, tx pgx.Tx, token string, userID int64, exp time.Duration) error {
