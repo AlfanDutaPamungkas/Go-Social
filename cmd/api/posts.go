@@ -46,13 +46,13 @@ func (app *application) createPostHandler(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	userId := 1
+	user := getUserFromCtx(r)
 
 	post := &store.Post{
 		Title:   payload.Title,
 		Content: payload.Content,
 		Tags:    payload.Tags,
-		UserID:  int64(userId),
+		UserID:  int64(user.ID),
 	}
 
 	if err := app.store.Posts.Create(r.Context(), post); err != nil {
