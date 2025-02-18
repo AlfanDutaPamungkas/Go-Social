@@ -42,6 +42,10 @@ type Storage struct {
 		Follow(ctx context.Context, followerID, userID int64) error
 		Unfollow(ctx context.Context, followerID, userID int64) error
 	}
+
+	Roles interface {
+		GetByName(context.Context, string) (*Role, error)
+	}
 }
 
 func NewStorage(db *pgxpool.Pool) Storage {
@@ -50,10 +54,11 @@ func NewStorage(db *pgxpool.Pool) Storage {
 		Users:     &UsersStore{db},
 		Comments:  &CommentStore{db},
 		Followers: &FollowerStore{db},
+		Roles:     &RoleStore{db},
 	}
 }
 
-func withTx(db *pgxpool.Pool, ctx context.Context, fn func (tx pgx.Tx) error) error {
+func withTx(db *pgxpool.Pool, ctx context.Context, fn func(tx pgx.Tx) error) error {
 	tx, err := db.Begin(ctx)
 	if err != nil {
 		return err
@@ -61,7 +66,7 @@ func withTx(db *pgxpool.Pool, ctx context.Context, fn func (tx pgx.Tx) error) er
 
 	defer tx.Rollback(ctx)
 
-	if err := fn(tx); err != nil{
+	if err := fn(tx); err != nil {
 		return err
 	}
 
