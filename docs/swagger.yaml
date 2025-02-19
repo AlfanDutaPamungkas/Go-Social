@@ -1,5 +1,12 @@
 basePath: /v1
 definitions:
+  main.CreateCommentPayload:
+    properties:
+      content:
+        type: string
+    required:
+    - content
+    type: object
   main.CreatePostPayload:
     properties:
       content:
@@ -69,6 +76,10 @@ definitions:
         type: integer
       is_active:
         type: boolean
+      role:
+        $ref: '#/definitions/store.Role'
+      role_id:
+        type: integer
       token:
         type: string
       username:
@@ -116,6 +127,17 @@ definitions:
       version:
         type: integer
     type: object
+  store.Role:
+    properties:
+      description:
+        type: string
+      id:
+        type: integer
+      level:
+        type: integer
+      name:
+        type: string
+    type: object
   store.User:
     properties:
       created_at:
@@ -126,6 +148,10 @@ definitions:
         type: integer
       is_active:
         type: boolean
+      role:
+        $ref: '#/definitions/store.Role'
+      role_id:
+        type: integer
       username:
         type: string
     type: object
@@ -155,7 +181,7 @@ paths:
       produces:
       - application/json
       responses:
-        "200":
+        "201":
           description: Token
           schema:
             type: string
@@ -321,6 +347,44 @@ paths:
       summary: Update a post
       tags:
       - posts
+  /posts/{postID}/comment:
+    post:
+      consumes:
+      - application/json
+      description: Creates a new comment in post
+      parameters:
+      - description: Post ID
+        in: path
+        name: postID
+        required: true
+        type: integer
+      - description: Created comment data
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/main.CreateCommentPayload'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/store.Comment'
+        "400":
+          description: Invalid request payload
+          schema: {}
+        "404":
+          description: Post not found
+          schema: {}
+        "500":
+          description: Internal Server Error
+          schema: {}
+      security:
+      - ApiKeyAuth: []
+      summary: Creates a new comment
+      tags:
+      - comments
   /users/{userID}/:
     get:
       consumes:

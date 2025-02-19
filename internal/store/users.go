@@ -64,7 +64,7 @@ func (s *UsersStore) Create(ctx context.Context, tx pgx.Tx, user *User) error {
 	defer cancel()
 
 	role := user.Role.Name
-	if role != "" {
+	if role == "" {
 		role = "user"
 	}
 
@@ -74,7 +74,7 @@ func (s *UsersStore) Create(ctx context.Context, tx pgx.Tx, user *User) error {
 		user.Username,
 		user.Password.hash,
 		user.Email,
-		user.Role.Name,
+		role,
 	).Scan(&user.ID, &user.CreatedAt)
 
 	if err != nil {
