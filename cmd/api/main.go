@@ -8,6 +8,8 @@ import (
 	"github.com/AlfanDutaPamungkas/Go-Social/internal/env"
 	"github.com/AlfanDutaPamungkas/Go-Social/internal/mailer"
 	"github.com/AlfanDutaPamungkas/Go-Social/internal/store"
+	"github.com/AlfanDutaPamungkas/Go-Social/internal/store/cache"
+	"github.com/redis/go-redis/v9"
 	"go.uber.org/zap"
 )
 
@@ -24,22 +26,28 @@ const version = "0.0.1"
 //	@license.name	Apache 2.0
 //	@license.url	http://www.apache.org/licenses/LICENSE-2.0.html
 
-//	@BasePath					/v1
+// @BasePath					/v1
 //
-//	@secureDefinitions.apiKey	ApiKeyAuth
-//	@in							header
-//	@name						Authorization
-//	@description
+// @secureDefinitions.apiKey	ApiKeyAuth
+// @in							header
+// @name						Authorization
+// @description
 func main() {
 	env.LoadEnv()
 
 	cfg := config{
-		addr: env.GetEnv("PORT", ":8080"),
+		addr:   env.GetEnv("PORT", ":8080"),
 		apiURL: env.GetEnv("EXTERNAL_URL", "localhost:8080"),
 		db: dbConfig{
 			addr:         env.GetEnv("DB_ADDR", "postgres://user:password@localhost:5432/mydb?sslmode=disable"),
 			maxOpenConns: env.GetIntEnv("DB_MAX_OPEN_CONNS", 30),
 			maxIdleTime:  env.GetEnv("DB_MAX_IDLE_TIME", "15m"),
+		},
+		redisCfg: redisConfig{
+			addr:   env.GetEnv("REDIS_ADDR", "localhost:6379"),
+			pw:     env.GetEnv("REDIS_PW", ""),
+			db:     env.GetIntEnv("REDIS_DB", 0),
+			enable: env.GetBoolEnv("REDIS_ENABLED", false),
 		},
 		env: env.GetEnv("env", "DEVELOPMENT"),
 		mail: mailConfig{
@@ -59,8 +67,8 @@ func main() {
 			},
 			token: tokenConfig{
 				secret: env.GetEnv("AUTH_TOKEN_SECRET", ""),
-				exp: time.Hour * 24 * 3,
-				iss: "gophersocial",
+				exp:    time.Hour * 24 * 3,
+				iss:    "gophersocial",
 			},
 		},
 	}
@@ -82,7 +90,18 @@ func main() {
 	defer db.Close()
 	logger.Info("db connection pool established")
 
+	var rdb *redis.Client
+	if cfg.redisCfg.enable {
+		rdb = cache.NewRedisClient(
+			cfg.redisCfg.addr,
+			cfg.redisCfg.pw,
+			cfg.redisCfg.db,
+		)
+		logger.Info("redis cache connection established")
+	}
+
 	store := store.NewStorage(db)
+	cacheStorage := cache.NewRedisStorage(rdb)
 
 	mailer := mailer.NewSMTPMailer(
 		cfg.mail.smtp.host,
@@ -98,10 +117,11 @@ func main() {
 	)
 
 	app := &application{
-		config: cfg,
-		store:  store,
-		logger: logger,
-		mailer: mailer,
+		config:        cfg,
+		store:         store,
+		cacheStorage:  cacheStorage,
+		logger:        logger,
+		mailer:        mailer,
 		authenticator: jwtAuthenticator,
 	}
 
