@@ -13,6 +13,7 @@ import (
 	"github.com/AlfanDutaPamungkas/Go-Social/docs"
 	"github.com/AlfanDutaPamungkas/Go-Social/internal/auth"
 	"github.com/AlfanDutaPamungkas/Go-Social/internal/mailer"
+	ratelimiter "github.com/AlfanDutaPamungkas/Go-Social/internal/rate_limiter"
 	"github.com/AlfanDutaPamungkas/Go-Social/internal/store"
 	"github.com/AlfanDutaPamungkas/Go-Social/internal/store/cache"
 	"github.com/go-chi/chi/v5"
@@ -29,6 +30,7 @@ type application struct {
 	logger        *zap.SugaredLogger
 	mailer        *mailer.SMTPMailer
 	authenticator auth.Authenticator
+	rateLimiter   ratelimiter.Limiter
 }
 
 type config struct {
@@ -40,6 +42,7 @@ type config struct {
 	frontendURL string
 	auth        authConfig
 	redisCfg    redisConfig
+	rateLimiter ratelimiter.Config
 }
 
 type redisConfig struct {
@@ -99,11 +102,12 @@ func (app *application) mount() http.Handler {
 	r.Use(middleware.RealIP)
 	r.Use(middleware.Logger)
 	r.Use(middleware.Recoverer)
+	r.Use(app.RateLimiterMiddleware)
 
 	r.Use(middleware.Timeout(60 * time.Second))
 
 	r.Route("/v1", func(r chi.Router) {
-		r.With(app.BasicAuthMiddleware()).Get("/health", app.healthCheckHandler)
+		r.Get("/health", app.healthCheckHandler)
 
 		docsURL := fmt.Sprintf("%s/swagger/doc.json", app.config.addr)
 		r.Get("/swagger/*", httpSwagger.Handler(httpSwagger.URL(docsURL)))
@@ -171,9 +175,9 @@ func (app *application) run(mux http.Handler) error {
 		quit := make(chan os.Signal, 1)
 
 		signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
-		s := <- quit
+		s := <-quit
 
-		ctx, cancel := context.WithTimeout(context.Background(), 5 * time.Second)
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
 
 		app.logger.Infow("signal caught", "signal", s.String())
@@ -184,11 +188,11 @@ func (app *application) run(mux http.Handler) error {
 	app.logger.Infow("server has started", "addr", app.config.addr, "env", app.config.env)
 
 	err := srv.ListenAndServe()
-	if !errors.Is(err, http.ErrServerClosed){
+	if !errors.Is(err, http.ErrServerClosed) {
 		return err
 	}
 
-	err = <- shutdown
+	err = <-shutdown
 	if err != nil {
 		return err
 	}

@@ -123,7 +123,7 @@ func (app *application) checkRolePrecedence(ctx context.Context, user *store.Use
 }
 
 func (app *application) getUser(ctx context.Context, userID int64) (*store.User, error) {
-	if !app.config.redisCfg.enable{
+	if !app.config.redisCfg.enable {
 		return app.store.Users.GetByID(ctx, userID)
 	}
 
@@ -144,4 +144,17 @@ func (app *application) getUser(ctx context.Context, userID int64) (*store.User,
 	}
 
 	return user, nil
+}
+
+func (app *application) RateLimiterMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if app.config.rateLimiter.Enabled {
+			if allow, retryAfter := app.rateLimiter.Allow(r.RemoteAddr); !allow {
+				app.rateLimiterExceededResponse(w, r, retryAfter.String())
+				return
+			}
+		}
+
+		next.ServeHTTP(w, r)
+	})
 }
