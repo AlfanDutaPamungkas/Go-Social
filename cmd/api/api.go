@@ -89,6 +89,10 @@ type dbConfig struct {
 func (app *application) mount() http.Handler {
 	r := chi.NewRouter()
 
+	r.Use(middleware.RequestID)
+	r.Use(middleware.RealIP)
+	r.Use(middleware.Logger)
+	r.Use(middleware.Recoverer)
 	r.Use(cors.Handler(cors.Options{
 		AllowedOrigins:   []string{"http://localhost:5173"},
 		AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
@@ -97,11 +101,6 @@ func (app *application) mount() http.Handler {
 		AllowCredentials: false,
 		MaxAge:           300,
 	}))
-
-	r.Use(middleware.RequestID)
-	r.Use(middleware.RealIP)
-	r.Use(middleware.Logger)
-	r.Use(middleware.Recoverer)
 	r.Use(app.RateLimiterMiddleware)
 
 	r.Use(middleware.Timeout(60 * time.Second))
