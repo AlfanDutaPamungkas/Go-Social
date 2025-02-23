@@ -1,6 +1,8 @@
 package main
 
 import (
+	"expvar"
+	"runtime"
 	"time"
 
 	"github.com/AlfanDutaPamungkas/Go-Social/internal/auth"
@@ -63,8 +65,8 @@ func main() {
 		frontendURL: env.GetEnv("FRONTEND_URL", "http://localhost:5173"),
 		auth: authConfig{
 			basic: basicConfig{
-				user: env.GetEnv("AUTH_USERNAME", ""),
-				pass: env.GetEnv("AUTH_PASS", ""),
+				user: env.GetEnv("AUTH_BASIC_USERNAME", ""),
+				pass: env.GetEnv("AUTH_BASIC_PASS", ""),
 			},
 			token: tokenConfig{
 				secret: env.GetEnv("AUTH_TOKEN_SECRET", ""),
@@ -136,6 +138,21 @@ func main() {
 		authenticator: jwtAuthenticator,
 		rateLimiter: rateLimiter,
 	}
+
+	expvar.NewString("version").Set(version)
+	expvar.Publish("database_stats", expvar.Func(func() any {
+		stats := db.Stat()
+		return map[string]any{
+			"max_conns":          stats.MaxConns(), 
+			"total_conns":        stats.TotalConns(),
+			"acquired_conns":     stats.AcquiredConns(),
+			"idle_conns":         stats.IdleConns(),
+			"max_idle_destroyed": stats.MaxIdleDestroyCount(),
+		}
+	}))
+	expvar.Publish("goroutines", expvar.Func(func() any {
+		return runtime.NumGoroutine()
+	}))
 
 	mux := app.mount()
 
