@@ -42,7 +42,7 @@ GopherSocial is a social media platform that allows users to create and share po
     SMTP_HOST=
     SMTP_PASSWORD=
     AUTH_TOKEN_SECRET=
-    REDIS_ENABLED=t
+    REDIS_ENABLED=
     REDIS_PW=
     AUTH_BASIC_USERNAME=
     AUTH_BASIC_PASS=
