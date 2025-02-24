@@ -15,16 +15,17 @@ GopherSocial is a social media platform that allows users to create and share po
 - [Golang](https://golang.org/doc/install) v1.18 or higher
 - [pgx](https://github.com/jackc/pgx) or any other postgres connection pool
 - [chi](github.com/go-chi/chi/v5) v5 or higher
-- [](github.com/go-chi/chi/v5) v5 or higher
+- [go-redis](https://github.com/redis/go-redis) v9 or higher
+- [swag](https://github.com/swaggo/swag) for documentation
 
 ## Instalation
 1. Clone the repository:
     ```bash
-    git clone https://github.com/AlfanDutaPamungkas/Meals-App-RESTful-API.git
+    git clone https://github.com/AlfanDutaPamungkas/Go-Social.git
     ```
 2. Navigate to the project directory:
     ```bash
-    cd Inventory-System-RESTful-API
+    cd Go-Social
     ```
 3. Install dependencies:
     ```bash
@@ -33,21 +34,28 @@ GopherSocial is a social media platform that allows users to create and share po
 4. Set up your environment variables:
     Create a `.env` file in the project root and specify the following variables:
     ```env
-    JWT_TOKEN_SECRET=your_jwt_secret_key
-    CLOUD_NAME=your_cloduinary_cloud_name
-    CLOUDINARY_API_KEY=your_cloudinary_api_key
-    CLOUDINARY_API_SECRET=your_cloudinary_api_secret
-    DB_URL=your_db_url
+    ENV=
+    PORT=
+    DB_ADDR=
+    EXTERNAL_URL=
+    SMTP_USERNAME=
+    SMTP_HOST=
+    SMTP_PASSWORD=
+    AUTH_TOKEN_SECRET=
+    REDIS_ENABLED=t
+    REDIS_PW=
+    AUTH_BASIC_USERNAME=
+    AUTH_BASIC_PASS=
     ```
 5. Start the server:
     ```bash
-    go run main.go
+    go run cmd/api
     ```
     The API will be running at `http://localhost:3000`.
 
 ## API Documentation (OpenAPI 3.0)
 
-The API is fully documented using the OpenAPI 3.0 specification. You can view the  `apispec.json`
+The API is fully documented using the OpenAPI 3.0 specification. You can view the  `http://localhost:3000/v1/swagger/index.html`
 
-Contributing
+## Contributing
 Feel free to open issues or submit pull requests if you want to contribute to this project.
